@@ -9,11 +9,14 @@ import 'react-toastify/dist/ReactToastify.css';
 import { PolyjuiceHttpProvider } from '@polyjuice-provider/web3';
 import { AddressTranslator } from 'nervos-godwoken-integration';
 
+import { getLayer2ckETHBalance } from '../lib/contracts/ERC20Helper';
+
 // import { SimpleStorageWrapper } from '../lib/contracts/SimpleStorageWrapper';
 import { NFTWrapper } from '../lib/contracts/ERC721PresetMinterPauserAutoIdWrapper';
 import { CONFIG } from '../config';
 
 import { SketchPicker } from 'react-color';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 async function createWeb3() {
     // Modern dapp browsers...
@@ -58,10 +61,12 @@ export function App() {
     const [contract, setContract] = useState<NFTWrapper>();
     const [accounts, setAccounts] = useState<string[]>();
     const [l2Balance, setL2Balance] = useState<bigint>();
+    const [l2ckETHBalance, setL2ckETHBalance] = useState<bigint>();
     const [existingContractIdInputValue, setExistingContractIdInputValue] = useState<string>();
     const [storedValue, setStoredValue] = useState<number | undefined>();
     const [deployTxHash, setDeployTxHash] = useState<string | undefined>();
     const [polyjuiceAddress, setPolyjuiceAddress] = useState<string | undefined>();
+    const [depositAddress, setDepositAddress] = useState<string | undefined>();
     const [transactionInProgress, setTransactionInProgress] = useState(false);
     const toastId = React.useRef(null);
     const [newStoredNumberInputValue, setNewStoredNumberInputValue] = useState<
@@ -81,8 +86,19 @@ export function App() {
         if (accounts?.[0]) {
             const addressTranslator = new AddressTranslator();
             setPolyjuiceAddress(addressTranslator.ethAddressToGodwokenShortAddress(accounts?.[0]));
+            
         } else {
             setPolyjuiceAddress(undefined);
+        }
+    }, [accounts?.[0]]);
+
+    useEffect (() => {
+        if (accounts?.[0]) {
+            (async () => {
+                const addressTranslator = new AddressTranslator();
+                const l2Address = await addressTranslator.getLayer2DepositAddress(web3, accounts?.[0]);
+                setDepositAddress (l2Address.addressString);
+            })();
         }
     }, [accounts?.[0]]);
 
@@ -179,6 +195,20 @@ export function App() {
         }
     }
 
+    // async function getDepositAddress (ethAddress: string) {
+    //     const addressTranslator = new AddressTranslator();
+    //     const depositAddress = await addressTranslator.getLayer2DepositAddress(web3, ethAddress);
+    //     return depositAddress;
+    // }
+
+    // async function getLayer2ckETHBalance (ethAddress: string) {
+    //     const addressTranslator = new AddressTranslator();
+    //     const l2Address = await addressTranslator.getLayer2DepositAddress(web3, ethAddress);
+    //     const balance = await web3.eth.getBalance(l2Address.addressString);
+    //     return balance;
+    // }
+
+
     useEffect(() => {
         if (web3) {
             return;
@@ -199,6 +229,16 @@ export function App() {
         })();
     });
 
+    useEffect (() => {
+        if (web3 && polyjuiceAddress && accounts?.[0]) {
+            (async () => {
+                const _l2ckETHBalance = BigInt (await getLayer2ckETHBalance (web3, polyjuiceAddress, accounts?.[0]));
+                console.log (_l2ckETHBalance);
+                setL2ckETHBalance (_l2ckETHBalance);
+            })();
+        }
+    }, [web3, polyjuiceAddress, accounts?.[0]]);
+
     const LoadingIndicator = () => <span className="rotating-icon">⚙️</span>;
 
     return (
@@ -207,6 +247,21 @@ export function App() {
             <br />
             <br />
             Your Polyjuice address: <b>{polyjuiceAddress || ' - '}</b>
+            <br />
+            <br />
+            <span style = {{ wordBreak: 'break-word' }} >Your Layer 2 deposit address: <b>{depositAddress ? (
+                <CopyToClipboard text = {depositAddress} onCopy = {() => {
+                    toast.info ('Copied to clipboard.', { type: 'info' });
+                }}>
+                    <button className = "copy-to-clipboard" >Copy to clipboard</button>
+                </CopyToClipboard>
+            ) : <LoadingIndicator />}</b></span>
+            <br/>
+            <br/>
+            You may deposit ETH to the above address using the <a href = "https://force-bridge-test.ckbapp.dev/bridge/Ethereum/Nervos?xchain-asset=0x0000000000000000000000000000000000000000">Force Bridge</a> for it to show up as ckETH on Layer 2
+            <br/>
+            <br/>
+            ckETH Balance: <b>{l2ckETHBalance !== undefined ? ((Number (l2ckETHBalance) / (10 ** 18))).toString () : <LoadingIndicator />} ckETH</b>
             <br />
             <br />
             Nervos Layer 2 balance:{' '}

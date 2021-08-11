@@ -23,14 +23,6 @@ export class NFTWrapper {
     }
 
     async mint (toAddress: string, color: string) {
-        // const tx = await (this.contract
-        //     .methods.mint(color, toAddress)
-        //     .send({
-        //         ...DEFAULT_SEND_OPTIONS,
-        //         from: this.address
-        //     } as any) as any);
-
-        // return tx.transactionHash;
 
         const tx = await this.contract.methods.mint(toAddress, color).send({
             ...DEFAULT_SEND_OPTIONS,
@@ -53,23 +45,6 @@ export class NFTWrapper {
         return colors;
     }
 
-    
-
-    // async getStoredValue(fromAddress: string) {
-    //     const data = await this.contract.methods.get().call({ from: fromAddress });
-
-    //     return parseInt(data, 10);
-    // }
-
-    // async setStoredValue(value: number, fromAddress: string) {
-    //     const tx = await this.contract.methods.set(value).send({
-    //         ...DEFAULT_SEND_OPTIONS,
-    //         from: fromAddress,
-    //         value
-    //     });
-
-    //     return tx;
-    // }
 
     async deploy(fromAddress: string) {
         const deployTx = await (this.contract
